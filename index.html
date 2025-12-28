@@ -15,9 +15,9 @@
         }
         .dark-mode {
             --bg-color: #121212;
-            --text-color: #ffffff;
-            --card-bg: #1e1e1e;
-            --border-color: #333;
+            --text-color: white;
+            --card-bg: #e0e0e0;
+            --border-color: #ccc;
         }
         body {
             background-color: var(--bg-color);
@@ -40,8 +40,16 @@
             text-align: center;
         }
         #drop-area.dragover { background-color: #cce7ff; }
-        .hidden { display: none; }
-        input { background-color: white; color: black; }
+        .dark-mode .btn-outline-secondary {
+            border-color: white;
+            color: white;
+        }
+        .dark-mode .card {
+            color: black;
+        }
+        .dark-mode h1 {
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -65,73 +73,15 @@
             </div>
             <input type="file" id="file-input" accept=".csv,.xlsx" style="display: none;">
         </div>
-
-        <!-- Shops Section -->
-        <div id="shops-section" class="hidden">
-            <h2>Shops Found</h2>
-            <ul id="shops-list" class="list-group mb-4"></ul>
-            <div class="card p-4">
-                <div class="mb-3">
-                    <label for="dates" class="form-label">Enter new dates (comma-separated, e.g., 20-03-2012,21-03-2012):</label>
-                    <input type="text" class="form-control" id="dates">
-                </div>
-                <div class="mb-3">
-                    <label for="format" class="form-label">Choose Date Format:</label>
-                    <select class="form-select" id="format">
-                        <option value="dd-mm-yyyy">dd-mm-yyyy</option>
-                        <option value="dd/mm/yyyy">dd/mm/yyyy</option>
-                        <option value="dd-mm-yy">dd-mm-yy</option>
-                        <option value="dd/mm/yy">dd/mm/yy</option>
-                    </select>
-                </div>
-                <button class="btn btn-primary" onclick="processDates()">Next</button>
-            </div>
-        </div>
-
-        <!-- Readings Section -->
-        <div id="readings-section" class="hidden">
-            <h2>Enter Meter Readings</h2>
-            <button class="btn btn-info mb-3" onclick="toggleData()">Display Existing Data</button>
-            <div id="existing-data" style="display: none;">
-                <h3>All Existing Readings</h3>
-                <div class="table-responsive">
-                    <table class="table table-striped table-bordered" id="existing-table"></table>
-                </div>
-            </div>
-            <form id="readings-form">
-                <div class="table-responsive">
-                    <table class="table table-striped table-bordered" id="readings-table"></table>
-                </div>
-                <button type="button" class="btn btn-primary" onclick="previewData()">Preview Database</button>
-            </form>
-        </div>
-
-        <!-- Preview Section -->
-        <div id="preview-section" class="hidden">
-            <h2>Preview of Updated Database</h2>
-            <div class="table-responsive">
-                <table class="table table-striped table-bordered" id="preview-table"></table>
-            </div>
-            <div class="mt-4">
-                <label for="filename" class="form-label">Output Filename (e.g., updated):</label>
-                <input type="text" class="form-control" id="filename" style="width: auto; display: inline-block;">
-                <button class="btn btn-success ms-2" onclick="downloadFile()">Download Excel File</button>
-            </div>
-        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let data = [];
-        let shops = [];
-        let dates = [];
-        let existingData = {};
-
         // Theme toggle
         const toggle = document.getElementById('theme-toggle');
         const body = document.body;
-        const sunIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
-        const moonIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+        const sunIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+        const moonIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
 
         const currentTheme = localStorage.getItem('theme');
         if (currentTheme === 'dark') {
@@ -179,12 +129,21 @@
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
-                data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
                 // Assume first row is headers, second is data start
                 const headers = data[1]; // Second row as headers
-                shops = [];
-                existingData = {};
+                let existingFormat = 'dd-mm-yyyy';
+                if (headers.length > 1) {
+                    const sample = headers[1];
+                    if (sample.includes('/')) {
+                        existingFormat = sample.split('/')[2].length === 4 ? 'dd/mm/yyyy' : 'dd/mm/yy';
+                    } else if (sample.includes('-')) {
+                        existingFormat = sample.split('-')[2].length === 4 ? 'dd-mm-yyyy' : 'dd-mm-yy';
+                    }
+                }
+                const shops = [];
+                const existingData = {};
                 for (let i = 2; i < data.length; i++) {
                     const row = data[i];
                     if (row[0]) {
@@ -195,116 +154,13 @@
                     }
                 }
 
-                showShops();
+                localStorage.setItem('data', JSON.stringify(data));
+                localStorage.setItem('shops', JSON.stringify(shops));
+                localStorage.setItem('existingData', JSON.stringify(existingData));
+                localStorage.setItem('existingFormat', existingFormat);
+                window.location.href = 'shops.html';
             };
             reader.readAsArrayBuffer(file);
-        }
-
-        function showShops() {
-            document.getElementById('upload-section').classList.add('hidden');
-            document.getElementById('shops-section').classList.remove('hidden');
-            const list = document.getElementById('shops-list');
-            list.innerHTML = '';
-            shops.forEach(shop => {
-                const li = document.createElement('li');
-                li.className = 'list-group-item';
-                li.textContent = shop;
-                list.appendChild(li);
-            });
-        }
-
-        function processDates() {
-            const datesInput = document.getElementById('dates').value;
-            dates = datesInput.split(',').map(d => d.trim());
-            // Format dates if needed, but keep as is
-            showReadings();
-        }
-
-        function showReadings() {
-            document.getElementById('shops-section').classList.add('hidden');
-            document.getElementById('readings-section').classList.remove('hidden');
-            const table = document.getElementById('readings-table');
-            table.innerHTML = '';
-            const thead = document.createElement('thead');
-            thead.className = 'table-dark';
-            const headerRow = document.createElement('tr');
-            headerRow.innerHTML = '<th>Shop</th>' + dates.map(d => `<th>${d}</th>`).join('');
-            thead.appendChild(headerRow);
-            table.appendChild(thead);
-
-            const tbody = document.createElement('tbody');
-            shops.forEach(shop => {
-                const row = document.createElement('tr');
-                row.innerHTML = `<td>${shop}</td>` + dates.map(d => `<td><input type="text" name="${shop}_${d}" value="${existingData[`${shop}_${d}`] || ''}" required></td>`).join('');
-                tbody.appendChild(row);
-            });
-            table.appendChild(tbody);
-        }
-
-        function toggleData() {
-            const div = document.getElementById('existing-data');
-            div.style.display = div.style.display === 'none' ? 'block' : 'none';
-            if (div.style.display === 'block') {
-                const table = document.getElementById('existing-table');
-                table.innerHTML = '';
-                const thead = document.createElement('thead');
-                thead.className = 'table-dark';
-                const headerRow = document.createElement('tr');
-                headerRow.innerHTML = '<th>Shop</th>' + Object.keys(existingData).filter(k => k.includes('_')).map(k => k.split('_')[1]).filter((v, i, a) => a.indexOf(v) === i).map(d => `<th>${d}</th>`).join('');
-                thead.appendChild(headerRow);
-                table.appendChild(thead);
-
-                const tbody = document.createElement('tbody');
-                shops.forEach(shop => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>${shop}</td>` + Object.keys(existingData).filter(k => k.startsWith(shop + '_')).map(k => `<td>${existingData[k]}</td>`).join('');
-                    tbody.appendChild(row);
-                });
-                table.appendChild(tbody);
-            }
-        }
-
-        function previewData() {
-            // Collect readings
-            const inputs = document.querySelectorAll('#readings-table input');
-            inputs.forEach(input => {
-                const [shop, date] = input.name.split('_');
-                existingData[`${shop}_${date}`] = input.value;
-            });
-
-            document.getElementById('readings-section').classList.add('hidden');
-            document.getElementById('preview-section').classList.remove('hidden');
-
-            const table = document.getElementById('preview-table');
-            table.innerHTML = '';
-            const thead = document.createElement('thead');
-            thead.className = 'table-dark';
-            const headerRow = document.createElement('tr');
-            headerRow.innerHTML = '<th>Shop</th>' + dates.map(d => `<th>${d}</th>`).join('');
-            thead.appendChild(headerRow);
-            table.appendChild(thead);
-
-            const tbody = document.createElement('tbody');
-            shops.forEach(shop => {
-                const row = document.createElement('tr');
-                row.innerHTML = `<td>${shop}</td>` + dates.map(d => `<td>${existingData[`${shop}_${d}`] || ''}</td>`).join('');
-                tbody.appendChild(row);
-            });
-            table.appendChild(tbody);
-        }
-
-        function downloadFile() {
-            const filename = document.getElementById('filename').value || 'updated';
-            const wsData = [['', 'meter readings for days']]; // Title
-            wsData.push(['shop name', ...dates]);
-            shops.forEach(shop => {
-                wsData.push([shop, ...dates.map(d => existingData[`${shop}_${d}`] || '')]);
-            });
-
-            const ws = XLSX.utils.aoa_to_sheet(wsData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-            XLSX.writeFile(wb, `${filename}.xlsx`);
         }
     </script>
 </body>
